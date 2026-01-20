@@ -1,3 +1,4 @@
+import calendar
 from datetime import date
 from typing import Literal
 
@@ -108,6 +109,14 @@ async def get_campaign_kpis(
         total_hours = 0
         total_days = 0
         
+        # Determine expected days per period for completeness check
+        if group_by == "week":
+            expected_days = 7
+        elif group_by == "month":
+            expected_days = None  # Varies by month, will check per-period
+        else:
+            expected_days = 1
+        
         for row in rows:
             hours = row["total_hours"]
             days_in_period = row["days_in_period"]
@@ -115,10 +124,23 @@ async def get_campaign_kpis(
             avg_daily_hours = hours / max(days_in_period, 1)
             badge = calculate_badge(avg_daily_hours)
             
+            # Check if this is a complete period
+            if group_by == "month":
+                # Calculate expected days for this specific month
+                period_date = date.fromisoformat(row["period_date"])
+                _, month_days = calendar.monthrange(period_date.year, period_date.month)
+                is_complete = days_in_period >= month_days
+            elif expected_days:
+                is_complete = days_in_period >= expected_days
+            else:
+                is_complete = True
+            
             data.append({
                 "date": row["period_date"],
                 "hours": round(hours, 1),
                 "badge": badge,
+                "days_in_period": days_in_period,
+                "is_complete": is_complete,
             })
             
             total_hours += hours

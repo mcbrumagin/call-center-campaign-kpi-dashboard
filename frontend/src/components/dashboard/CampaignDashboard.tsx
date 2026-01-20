@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { kpisApi, campaignsApi } from '@/lib/api';
 import { BadgeDisplay } from './BadgeDisplay';
@@ -14,6 +15,7 @@ interface CampaignDashboardProps {
 }
 
 type GroupBy = 'day' | 'week' | 'month';
+type RangePreset = '7' | '30' | '60' | '90' | '365' | 'custom';
 
 function getDateRange(days: number): { start: string; end: string } {
   const end = new Date();
@@ -25,11 +27,66 @@ function getDateRange(days: number): { start: string; end: string } {
   };
 }
 
-export function CampaignDashboard({ campaignId }: CampaignDashboardProps) {
-  const [groupBy, setGroupBy] = useState<GroupBy>('day');
-  const [dateRange, setDateRange] = useState(30);
+function formatDateForInput(dateStr: string): string {
+  return dateStr; // Already in YYYY-MM-DD format
+}
 
-  const { start, end } = getDateRange(dateRange);
+function isValidDate(dateStr: string): boolean {
+  const date = new Date(dateStr);
+  return !isNaN(date.getTime());
+}
+
+export function CampaignDashboard({ campaignId }: CampaignDashboardProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Read state from URL with defaults
+  const groupBy = (searchParams.get('groupBy') as GroupBy) || 'day';
+  const rangePreset = (searchParams.get('range') as RangePreset) || '30';
+  const customStart = searchParams.get('start');
+  const customEnd = searchParams.get('end');
+
+  // Calculate date range
+  const { start, end } = useMemo(() => {
+    if (rangePreset === 'custom' && customStart && customEnd && isValidDate(customStart) && isValidDate(customEnd)) {
+      return { start: customStart, end: customEnd };
+    }
+    const days = parseInt(rangePreset, 10) || 30;
+    return getDateRange(days);
+  }, [rangePreset, customStart, customEnd]);
+
+  // Update URL params
+  const updateParams = useCallback((updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null) {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+    });
+    
+    router.push(`?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
+
+  const setGroupBy = useCallback((value: GroupBy) => {
+    updateParams({ groupBy: value });
+  }, [updateParams]);
+
+  const setRangePreset = useCallback((value: RangePreset) => {
+    if (value === 'custom') {
+      // When switching to custom, initialize with current dates
+      updateParams({ range: 'custom', start, end });
+    } else {
+      // Clear custom dates when using a preset
+      updateParams({ range: value, start: null, end: null });
+    }
+  }, [updateParams, start, end]);
+
+  const setCustomDateRange = useCallback((newStart: string, newEnd: string) => {
+    updateParams({ range: 'custom', start: newStart, end: newEnd });
+  }, [updateParams]);
 
   const { data: campaign, isLoading: campaignLoading } = useQuery({
     queryKey: ['campaign', campaignId],
@@ -180,17 +237,38 @@ export function CampaignDashboard({ campaignId }: CampaignDashboardProps) {
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">Period:</label>
               <select
-                value={dateRange}
-                onChange={(e) => setDateRange(Number(e.target.value))}
+                value={rangePreset}
+                onChange={(e) => setRangePreset(e.target.value as RangePreset)}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value={7}>Last 7 days</option>
-                <option value={30}>Last 30 days</option>
-                <option value={60}>Last 60 days</option>
-                <option value={90}>Last 90 days</option>
-                <option value={365}>Past year</option>
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="60">Last 60 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="365">Past year</option>
+                <option value="custom">Custom range</option>
               </select>
             </div>
+            {rangePreset === 'custom' && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={formatDateForInput(start)}
+                  onChange={(e) => setCustomDateRange(e.target.value, end)}
+                  max={end}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <span className="text-gray-400">to</span>
+                <input
+                  type="date"
+                  value={formatDateForInput(end)}
+                  onChange={(e) => setCustomDateRange(start, e.target.value)}
+                  min={start}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">Group by:</label>
               <div className="flex rounded-lg border border-gray-300 overflow-hidden">

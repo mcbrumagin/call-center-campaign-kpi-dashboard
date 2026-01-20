@@ -74,11 +74,17 @@ function CustomTooltip({ active, payload, label, groupBy }: CustomTooltipProps) 
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const badge = data.badge;
+    const isPartial = !data.is_complete;
 
     return (
       <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
         <p className="font-medium text-gray-900">
           {formatDate(label || '', groupBy)}
+          {isPartial && groupBy !== 'day' && (
+            <span className="ml-2 text-xs text-amber-600 font-normal">
+              (partial: {data.days_in_period} day{data.days_in_period !== 1 ? 's' : ''})
+            </span>
+          )}
         </p>
         <p className="text-2xl font-bold text-gray-900 mt-1">
           {data.hours.toFixed(1)} hours
@@ -192,7 +198,8 @@ export function KPIChart({ data, groupBy }: KPIChartProps) {
               fill="url(#colorHours)"
               dot={(props) => {
                 const { cx, cy, payload } = props;
-                const badge = payload.badge;
+                const badge = payload.badge as keyof typeof badgeColors | null;
+                const isPartial = !payload.is_complete;
                 if (!badge) return null;
                 return (
                   <circle
@@ -201,8 +208,9 @@ export function KPIChart({ data, groupBy }: KPIChartProps) {
                     cy={cy}
                     r={6}
                     fill={badgeColors[badge]}
-                    stroke="var(--color-gray-400)"
-                    strokeWidth={1}
+                    stroke={isPartial ? 'var(--color-amber-500)' : 'var(--color-gray-400)'}
+                    strokeWidth={isPartial ? 2 : 1}
+                    strokeDasharray={isPartial ? '2 2' : undefined}
                   />
                 );
               }}

@@ -259,6 +259,8 @@ export interface KPIDataPoint {
   date: string;
   hours: number;
   badge: BadgeType;
+  days_in_period: number;
+  is_complete: boolean;
 }
 
 export interface KPIResponse {

@@ -144,6 +144,8 @@ class KPIDataPoint(BaseModel):
     date: str
     hours: float
     badge: BadgeType
+    days_in_period: int = 1
+    is_complete: bool = True
 
 
 class PeriodInfo(BaseModel):
