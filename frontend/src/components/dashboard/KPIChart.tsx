@@ -17,7 +17,7 @@ interface KPIChartProps {
   groupBy: 'day' | 'week' | 'month';
 }
 
-const BADGE_THRESHOLDS = {
+const DAILY_BADGE_THRESHOLDS = {
   platinum: 240,
   gold: 180,
   silver: 120,
@@ -25,11 +25,33 @@ const BADGE_THRESHOLDS = {
 };
 
 const badgeColors = {
-  platinum: '#94a3b8',
-  gold: '#fbbf24',
-  silver: '#9ca3af',
-  bronze: '#f97316',
+  platinum: 'var(--color-slate-100)',
+  gold: 'var(--color-yellow-400)',
+  silver: 'var(--color-gray-300)',
+  bronze: 'var(--color-orange-400)',
 };
+
+// Get multiplier for threshold scaling based on grouping
+function getThresholdMultiplier(groupBy: 'day' | 'week' | 'month'): number {
+  switch (groupBy) {
+    case 'week':
+      return 7;
+    case 'month':
+      return 30; // Approximate average days per month
+    default:
+      return 1;
+  }
+}
+
+function getScaledThresholds(groupBy: 'day' | 'week' | 'month') {
+  const multiplier = getThresholdMultiplier(groupBy);
+  return {
+    platinum: DAILY_BADGE_THRESHOLDS.platinum * multiplier,
+    gold: DAILY_BADGE_THRESHOLDS.gold * multiplier,
+    silver: DAILY_BADGE_THRESHOLDS.silver * multiplier,
+    bronze: DAILY_BADGE_THRESHOLDS.bronze * multiplier,
+  };
+}
 
 function formatDate(dateStr: string, groupBy: string): string {
   const date = new Date(dateStr);
@@ -82,14 +104,15 @@ export function KPIChart({ data, groupBy }: KPIChartProps) {
     formattedDate: formatDate(d.date, groupBy),
   }));
 
-  const maxHours = Math.max(...data.map((d) => d.hours), 250);
+  const thresholds = getScaledThresholds(groupBy);
+  const maxHours = Math.max(...data.map((d) => d.hours), thresholds.platinum + 50);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-900">Hours Worked</h3>
         <div className="flex items-center gap-4 text-sm">
-          {Object.entries(BADGE_THRESHOLDS)
+          {Object.entries(thresholds)
             .reverse()
             .map(([badge, threshold]) => (
               <div key={badge} className="flex items-center gap-1">
@@ -136,25 +159,25 @@ export function KPIChart({ data, groupBy }: KPIChartProps) {
 
             {/* Badge threshold lines */}
             <ReferenceLine
-              y={BADGE_THRESHOLDS.platinum}
+              y={thresholds.platinum}
               stroke={badgeColors.platinum}
               strokeDasharray="5 5"
               strokeWidth={2}
             />
             <ReferenceLine
-              y={BADGE_THRESHOLDS.gold}
+              y={thresholds.gold}
               stroke={badgeColors.gold}
               strokeDasharray="5 5"
               strokeWidth={2}
             />
             <ReferenceLine
-              y={BADGE_THRESHOLDS.silver}
+              y={thresholds.silver}
               stroke={badgeColors.silver}
               strokeDasharray="5 5"
               strokeWidth={2}
             />
             <ReferenceLine
-              y={BADGE_THRESHOLDS.bronze}
+              y={thresholds.bronze}
               stroke={badgeColors.bronze}
               strokeDasharray="5 5"
               strokeWidth={2}
@@ -178,8 +201,8 @@ export function KPIChart({ data, groupBy }: KPIChartProps) {
                     cy={cy}
                     r={6}
                     fill={badgeColors[badge]}
-                    stroke="white"
-                    strokeWidth={2}
+                    stroke="var(--color-gray-400)"
+                    strokeWidth={1}
                   />
                 );
               }}

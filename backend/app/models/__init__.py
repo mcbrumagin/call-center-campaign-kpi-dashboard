@@ -23,6 +23,7 @@ from app.models.schemas import (
     KPIResponse,
     KPISummary,
     DailyBadgeResponse,
+    BadgeSummaryResponse,
     BadgeType,
 )
 
@@ -51,5 +52,6 @@ __all__ = [
     "KPIResponse",
     "KPISummary",
     "DailyBadgeResponse",
+    "BadgeSummaryResponse",
     "BadgeType",
 ]

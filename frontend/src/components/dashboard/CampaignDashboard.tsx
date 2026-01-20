@@ -46,6 +46,16 @@ export function CampaignDashboard({ campaignId }: CampaignDashboardProps) {
       }),
   });
 
+  // Separate query for badge summary - always uses daily data regardless of chart grouping
+  const { data: badgeSummary, isLoading: badgeSummaryLoading } = useQuery({
+    queryKey: ['badge-summary', campaignId, start, end],
+    queryFn: () =>
+      kpisApi.getBadgeSummary(campaignId, {
+        start_date: start,
+        end_date: end,
+      }),
+  });
+
   const { data: todayBadge } = useQuery({
     queryKey: ['badge', campaignId, 'today'],
     queryFn: () => kpisApi.getDailyBadge(campaignId),
@@ -203,27 +213,38 @@ export function CampaignDashboard({ campaignId }: CampaignDashboardProps) {
         </div>
 
         {/* Charts and Summary */}
-        {kpiLoading ? (
-          <div className="flex items-center justify-center h-96">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
-          </div>
-        ) : kpiData ? (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div className="lg:col-span-3">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Chart Section - reloads on groupBy change */}
+          <div className="lg:col-span-3">
+            {kpiLoading ? (
+              <div className="flex items-center justify-center h-96 bg-white rounded-xl shadow-sm border border-gray-100">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+              </div>
+            ) : kpiData ? (
               <KPIChart data={kpiData.data} groupBy={groupBy} />
-            </div>
-            <div className="lg:col-span-1">
+            ) : (
+              <div className="flex items-center justify-center h-96 bg-white rounded-xl shadow-sm border border-gray-100 text-gray-500">
+                No KPI data available for this period
+              </div>
+            )}
+          </div>
+
+          {/* Badge Summary - only reloads on date range change */}
+          <div className="lg:col-span-1">
+            {badgeSummaryLoading ? (
+              <div className="flex items-center justify-center h-64 bg-white rounded-xl shadow-sm border border-gray-100">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+              </div>
+            ) : badgeSummary ? (
               <BadgeSummary
-                breakdown={kpiData.summary.badge_breakdown}
-                totalDays={kpiData.summary.days_with_data}
+                breakdown={badgeSummary.badge_breakdown}
+                totalDays={badgeSummary.total_days}
+                averageBadge={badgeSummary.average_badge}
+                averageDailyHours={badgeSummary.average_daily_hours}
               />
-            </div>
+            ) : null}
           </div>
-        ) : (
-          <div className="text-center py-12 text-gray-500">
-            No KPI data available for this period
-          </div>
-        )}
+        </div>
       </main>
     </div>
   );

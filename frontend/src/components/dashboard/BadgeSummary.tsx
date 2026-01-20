@@ -1,7 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Trophy, Medal, Award, Star, Circle } from 'lucide-react';
+import { Trophy, Medal, Award, Star, Circle, TrendingUp } from 'lucide-react';
+import type { BadgeType } from '@/lib/api';
 
 interface BadgeSummaryProps {
   breakdown: {
@@ -12,6 +13,8 @@ interface BadgeSummaryProps {
     none: number;
   };
   totalDays: number;
+  averageBadge?: BadgeType;
+  averageDailyHours?: number;
 }
 
 const badges = [
@@ -19,8 +22,8 @@ const badges = [
     key: 'platinum',
     label: 'Platinum',
     icon: Trophy,
-    color: 'bg-slate-200',
-    textColor: 'text-slate-700',
+    color: 'bg-slate-100',
+    textColor: 'text-slate-600',
   },
   {
     key: 'gold',
@@ -52,10 +55,44 @@ const badges = [
   },
 ];
 
-export function BadgeSummary({ breakdown, totalDays }: BadgeSummaryProps) {
+function getBadgeConfig(badgeKey: string | null) {
+  return badges.find((b) => b.key === (badgeKey || 'none')) || badges[badges.length - 1];
+}
+
+export function BadgeSummary({ breakdown, totalDays, averageBadge, averageDailyHours }: BadgeSummaryProps) {
+  const avgBadgeConfig = getBadgeConfig(averageBadge);
+  const AvgIcon = avgBadgeConfig.icon;
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Badge Summary</h3>
+      
+      {/* Average Badge Rating */}
+      {averageDailyHours !== undefined && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-12 h-12 ${avgBadgeConfig.color} rounded-lg flex items-center justify-center`}
+            >
+              <AvgIcon className={`w-6 h-6 ${avgBadgeConfig.textColor}`} />
+            </div>
+            <div>
+              <div className="flex items-center gap-1 text-sm text-gray-500">
+                <TrendingUp className="w-4 h-4" />
+                <span>Average Rating</span>
+              </div>
+              <p className="text-lg font-semibold text-gray-900">
+                {avgBadgeConfig.label}
+              </p>
+              <p className="text-sm text-gray-500">
+                {averageDailyHours.toFixed(1)} hrs/day avg
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Daily Badge Breakdown */}
       <div className="space-y-3">
         {badges.map((badge, index) => {
           const count = breakdown[badge.key as keyof typeof breakdown];

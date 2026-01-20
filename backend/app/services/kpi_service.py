@@ -79,19 +79,18 @@ async def get_campaign_kpis(
         # Build grouping expression based on group_by parameter
         if group_by == "day":
             date_expr = "date"
-            date_format = "%Y-%m-%d"
         elif group_by == "week":
             # Start of week (Monday)
             date_expr = "date(date, 'weekday 0', '-6 days')"
-            date_format = "%Y-%m-%d"
         else:  # month
             date_expr = "date(date, 'start of month')"
-            date_format = "%Y-%m"
         
+        # Query includes count of days in each period for average calculation
         query = f"""
             SELECT 
                 {date_expr} as period_date,
-                SUM(hours) as total_hours
+                SUM(hours) as total_hours,
+                COUNT(DISTINCT date) as days_in_period
             FROM campaign_kpi
             WHERE campaign_id = ?
               AND date BETWEEN ? AND ?
@@ -106,12 +105,15 @@ async def get_campaign_kpis(
         rows = await cursor.fetchall()
         
         data = []
-        badge_counts = {"platinum": 0, "gold": 0, "silver": 0, "bronze": 0, "none": 0}
         total_hours = 0
+        total_days = 0
         
         for row in rows:
             hours = row["total_hours"]
-            badge = calculate_badge(hours)
+            days_in_period = row["days_in_period"]
+            # Calculate badge based on average daily hours within the period
+            avg_daily_hours = hours / max(days_in_period, 1)
+            badge = calculate_badge(avg_daily_hours)
             
             data.append({
                 "date": row["period_date"],
@@ -120,7 +122,7 @@ async def get_campaign_kpis(
             })
             
             total_hours += hours
-            badge_counts[badge or "none"] += 1
+            total_days += days_in_period
         
         return {
             "campaign": {
@@ -136,9 +138,8 @@ async def get_campaign_kpis(
             "data": data,
             "summary": {
                 "total_hours": round(total_hours, 1),
-                "average_daily_hours": round(total_hours / max(len(data), 1), 1),
-                "days_with_data": len(data),
-                "badge_breakdown": badge_counts,
+                "average_daily_hours": round(total_hours / max(total_days, 1), 1),
+                "days_with_data": total_days,
             },
         }
 
@@ -177,4 +178,74 @@ async def get_daily_badge(campaign_id: int, target_date: date) -> dict | None:
             "threshold": get_badge_threshold(badge),
             "next_badge": next_info["next_badge"],
             "hours_to_next": next_info["hours_to_next"],
+        }
+
+
+async def get_badge_summary(
+    campaign_id: int,
+    start_date: date,
+    end_date: date,
+) -> dict | None:
+    """
+    Get badge summary for a campaign over a date range.
+    
+    Always calculates badges from daily data regardless of how the chart is grouped.
+    Returns the count of each badge type earned per day.
+    """
+    async with get_db() as db:
+        # Verify campaign exists
+        cursor = await db.execute(
+            "SELECT id, name, is_active FROM campaign WHERE id = ?",
+            (campaign_id,),
+        )
+        campaign = await cursor.fetchone()
+        if not campaign:
+            return None
+        
+        # Always query daily data for accurate badge calculation
+        query = """
+            SELECT 
+                date,
+                SUM(hours) as total_hours
+            FROM campaign_kpi
+            WHERE campaign_id = ?
+              AND date BETWEEN ? AND ?
+            GROUP BY date
+            ORDER BY date
+        """
+        
+        cursor = await db.execute(
+            query,
+            (campaign_id, start_date.isoformat(), end_date.isoformat()),
+        )
+        rows = await cursor.fetchall()
+        
+        badge_counts = {"platinum": 0, "gold": 0, "silver": 0, "bronze": 0, "none": 0}
+        total_hours = 0
+        
+        for row in rows:
+            hours = row["total_hours"]
+            badge = calculate_badge(hours)
+            total_hours += hours
+            badge_counts[badge or "none"] += 1
+        
+        total_days = len(rows)
+        average_daily_hours = round(total_hours / max(total_days, 1), 1)
+        average_badge = calculate_badge(average_daily_hours)
+        
+        return {
+            "campaign": {
+                "id": campaign["id"],
+                "name": campaign["name"],
+                "is_active": bool(campaign["is_active"]),
+            },
+            "period": {
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+            },
+            "badge_breakdown": badge_counts,
+            "total_days": total_days,
+            "total_hours": round(total_hours, 1),
+            "average_daily_hours": average_daily_hours,
+            "average_badge": average_badge,
         }

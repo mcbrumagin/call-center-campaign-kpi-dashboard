@@ -5,6 +5,7 @@ from app.services.kpi_service import (
     get_next_badge_info,
     get_campaign_kpis,
     get_daily_badge,
+    get_badge_summary,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "get_next_badge_info",
     "get_campaign_kpis",
     "get_daily_badge",
+    "get_badge_summary",
 ]

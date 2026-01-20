@@ -164,7 +164,6 @@ class KPISummary(BaseModel):
     total_hours: float
     average_daily_hours: float
     days_with_data: int
-    badge_breakdown: BadgeBreakdown
 
 
 class KPIResponse(BaseModel):
@@ -181,3 +180,18 @@ class DailyBadgeResponse(BaseModel):
     threshold: int
     next_badge: BadgeType
     hours_to_next: float
+
+
+class BadgeSummaryPeriod(BaseModel):
+    start_date: str
+    end_date: str
+
+
+class BadgeSummaryResponse(BaseModel):
+    campaign: CampaignBrief
+    period: BadgeSummaryPeriod
+    badge_breakdown: BadgeBreakdown
+    total_days: int
+    total_hours: float
+    average_daily_hours: float
+    average_badge: BadgeType

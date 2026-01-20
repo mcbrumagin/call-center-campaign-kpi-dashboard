@@ -3,8 +3,8 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, status, Query
 
-from app.services import get_campaign_kpis, get_daily_badge, BADGE_THRESHOLDS
-from app.models import KPIResponse, DailyBadgeResponse
+from app.services import get_campaign_kpis, get_daily_badge, get_badge_summary, BADGE_THRESHOLDS
+from app.models import KPIResponse, DailyBadgeResponse, BadgeSummaryResponse
 
 router = APIRouter(prefix="/api/kpis", tags=["kpis"])
 
@@ -63,6 +63,42 @@ async def get_badge(
     Returns the badge earned and progress to next badge.
     """
     result = await get_daily_badge(campaign_id, target_date)
+    
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Campaign not found",
+        )
+    
+    return result
+
+
+@router.get("/campaigns/{campaign_id}/badge-summary", response_model=BadgeSummaryResponse)
+async def get_campaign_badge_summary(
+    campaign_id: int,
+    start_date: date = Query(
+        default_factory=lambda: date.today() - timedelta(days=30),
+        description="Start date for badge summary",
+    ),
+    end_date: date = Query(
+        default_factory=date.today,
+        description="End date for badge summary",
+    ),
+):
+    """
+    Get badge summary for a campaign over a date range.
+    
+    Public endpoint for customer dashboard.
+    Always calculates badges from daily data, regardless of chart grouping.
+    Returns the count of each badge type earned per day.
+    """
+    if start_date > end_date:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="start_date must be before or equal to end_date",
+        )
+    
+    result = await get_badge_summary(campaign_id, start_date, end_date)
     
     if result is None:
         raise HTTPException(

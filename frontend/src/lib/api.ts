@@ -269,15 +269,25 @@ export interface KPIResponse {
     total_hours: number;
     average_daily_hours: number;
     days_with_data: number;
-    // TODO MOVE/REMOVE ?
-    badge_breakdown: {
-      platinum: number;
-      gold: number;
-      silver: number;
-      bronze: number;
-      none: number;
-    };
   };
+}
+
+export interface BadgeBreakdown {
+  platinum: number;
+  gold: number;
+  silver: number;
+  bronze: number;
+  none: number;
+}
+
+export interface BadgeSummaryResponse {
+  campaign: { id: number; name: string; is_active: boolean };
+  period: { start_date: string; end_date: string };
+  badge_breakdown: BadgeBreakdown;
+  total_days: number;
+  total_hours: number;
+  average_daily_hours: number;
+  average_badge: BadgeType;
 }
 
 export interface DailyBadgeResponse {
@@ -310,6 +320,18 @@ export const kpisApi = {
     const query = searchParams.toString();
     console.log('query', query);
     return fetchApi<DailyBadgeResponse>(`/api/kpis/campaigns/${campaignId}/badge${query ? `?${query}` : ''}`);
+  },
+
+  getBadgeSummary: (
+    campaignId: number,
+    params?: { start_date?: string; end_date?: string }
+  ) => {
+    const searchParams = new URLSearchParams();
+    if (params?.start_date) searchParams.set('start_date', params.start_date);
+    if (params?.end_date) searchParams.set('end_date', params.end_date);
+    
+    const query = searchParams.toString();
+    return fetchApi<BadgeSummaryResponse>(`/api/kpis/campaigns/${campaignId}/badge-summary${query ? `?${query}` : ''}`);
   },
 
   getBadgeThresholds: () =>
