@@ -17,7 +17,8 @@ interface KPIChartProps {
   groupBy: 'day' | 'week' | 'month';
 }
 
-const DAILY_BADGE_THRESHOLDS = {
+// Badge thresholds are always daily values
+const BADGE_THRESHOLDS = {
   platinum: 240,
   gold: 180,
   silver: 120,
@@ -29,29 +30,8 @@ const badgeColors = {
   gold: 'var(--color-yellow-400)',
   silver: 'var(--color-gray-300)',
   bronze: 'var(--color-orange-400)',
+  none: 'var(--color-blue-100)',
 };
-
-// Get multiplier for threshold scaling based on grouping
-function getThresholdMultiplier(groupBy: 'day' | 'week' | 'month'): number {
-  switch (groupBy) {
-    case 'week':
-      return 7;
-    case 'month':
-      return 30; // Approximate average days per month
-    default:
-      return 1;
-  }
-}
-
-function getScaledThresholds(groupBy: 'day' | 'week' | 'month') {
-  const multiplier = getThresholdMultiplier(groupBy);
-  return {
-    platinum: DAILY_BADGE_THRESHOLDS.platinum * multiplier,
-    gold: DAILY_BADGE_THRESHOLDS.gold * multiplier,
-    silver: DAILY_BADGE_THRESHOLDS.silver * multiplier,
-    bronze: DAILY_BADGE_THRESHOLDS.bronze * multiplier,
-  };
-}
 
 function formatDate(dateStr: string, groupBy: string): string {
   const date = new Date(dateStr);
@@ -63,9 +43,14 @@ function formatDate(dateStr: string, groupBy: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+interface ChartDataPoint extends KPIDataPoint {
+  formattedDate: string;
+  avgDailyHours: number;
+}
+
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: Array<{ value: number; payload: KPIDataPoint }>;
+  payload?: Array<{ value: number; payload: ChartDataPoint }>;
   label?: string;
   groupBy: string;
 }
@@ -75,6 +60,7 @@ function CustomTooltip({ active, payload, label, groupBy }: CustomTooltipProps) 
     const data = payload[0].payload;
     const badge = data.badge;
     const isPartial = !data.is_complete;
+    const showTotalHours = groupBy !== 'day';
 
     return (
       <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
@@ -87,8 +73,13 @@ function CustomTooltip({ active, payload, label, groupBy }: CustomTooltipProps) 
           )}
         </p>
         <p className="text-2xl font-bold text-gray-900 mt-1">
-          {data.hours.toFixed(1)} hours
+          {data.avgDailyHours.toFixed(1)} hrs/day
         </p>
+        {showTotalHours && (
+          <p className="text-sm text-gray-500">
+            {data.hours.toFixed(1)} hrs total
+          </p>
+        )}
         {badge && (
           <div className="mt-2 flex items-center gap-2">
             <span
@@ -105,20 +96,26 @@ function CustomTooltip({ active, payload, label, groupBy }: CustomTooltipProps) 
 }
 
 export function KPIChart({ data, groupBy }: KPIChartProps) {
-  const chartData = data.map((d) => ({
+  // Normalize data to daily average hours
+  const chartData: ChartDataPoint[] = data.map((d) => ({
     ...d,
     formattedDate: formatDate(d.date, groupBy),
+    avgDailyHours: d.hours / Math.max(d.days_in_period, 1),
   }));
 
-  const thresholds = getScaledThresholds(groupBy);
-  const maxHours = Math.max(...data.map((d) => d.hours), thresholds.platinum + 50);
+  const maxAvgHours = Math.max(
+    ...chartData.map((d) => d.avgDailyHours),
+    BADGE_THRESHOLDS.platinum + 20
+  );
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Hours Worked</h3>
+        <h3 className="text-lg font-semibold text-gray-900">
+          Average Daily Hours
+        </h3>
         <div className="flex items-center gap-4 text-sm">
-          {Object.entries(thresholds)
+          {Object.entries(BADGE_THRESHOLDS)
             .reverse()
             .map(([badge, threshold]) => (
               <div key={badge} className="flex items-center gap-1">
@@ -155,7 +152,7 @@ export function KPIChart({ data, groupBy }: KPIChartProps) {
               axisLine={{ stroke: '#e5e7eb' }}
             />
             <YAxis
-              domain={[0, maxHours]}
+              domain={[0, maxAvgHours]}
               tick={{ fontSize: 12, fill: '#6b7280' }}
               tickLine={false}
               axisLine={{ stroke: '#e5e7eb' }}
@@ -163,27 +160,27 @@ export function KPIChart({ data, groupBy }: KPIChartProps) {
             />
             <Tooltip content={<CustomTooltip groupBy={groupBy} />} />
 
-            {/* Badge threshold lines */}
+            {/* Badge threshold lines - always at daily values */}
             <ReferenceLine
-              y={thresholds.platinum}
+              y={BADGE_THRESHOLDS.platinum}
               stroke={badgeColors.platinum}
               strokeDasharray="5 5"
               strokeWidth={2}
             />
             <ReferenceLine
-              y={thresholds.gold}
+              y={BADGE_THRESHOLDS.gold}
               stroke={badgeColors.gold}
               strokeDasharray="5 5"
               strokeWidth={2}
             />
             <ReferenceLine
-              y={thresholds.silver}
+              y={BADGE_THRESHOLDS.silver}
               stroke={badgeColors.silver}
               strokeDasharray="5 5"
               strokeWidth={2}
             />
             <ReferenceLine
-              y={thresholds.bronze}
+              y={BADGE_THRESHOLDS.bronze}
               stroke={badgeColors.bronze}
               strokeDasharray="5 5"
               strokeWidth={2}
@@ -191,7 +188,7 @@ export function KPIChart({ data, groupBy }: KPIChartProps) {
 
             <Area
               type="monotone"
-              dataKey="hours"
+              dataKey="avgDailyHours"
               stroke="#3b82f6"
               strokeWidth={2}
               fillOpacity={1}
@@ -200,14 +197,14 @@ export function KPIChart({ data, groupBy }: KPIChartProps) {
                 const { cx, cy, payload } = props;
                 const badge = payload.badge as keyof typeof badgeColors | null;
                 const isPartial = !payload.is_complete;
-                if (!badge) return null;
+                
                 return (
                   <circle
                     key={`dot-${payload.date}`}
                     cx={cx}
                     cy={cy}
                     r={6}
-                    fill={badgeColors[badge]}
+                    fill={badgeColors[badge || 'none']}
                     stroke={isPartial ? 'var(--color-amber-500)' : 'var(--color-gray-400)'}
                     strokeWidth={isPartial ? 2 : 1}
                     strokeDasharray={isPartial ? '2 2' : undefined}
