@@ -50,7 +50,7 @@ const badges = [
     key: 'none',
     label: 'No Badge',
     icon: Circle,
-    color: 'bg-gray-100',
+    color: 'bg-blue-100',
     textColor: 'text-gray-500',
   },
 ];

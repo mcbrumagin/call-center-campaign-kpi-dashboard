@@ -15,6 +15,9 @@ import { KPIDataPoint } from '@/lib/api';
 interface KPIChartProps {
   data: KPIDataPoint[];
   groupBy: 'day' | 'week' | 'month';
+  startDate: string;
+  endDate: string;
+  showEmptyDays: boolean;
 }
 
 // Badge thresholds are always daily values
@@ -41,6 +44,45 @@ function formatDate(dateStr: string, groupBy: string): string {
     return `Week of ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
   }
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// Generate all dates between start and end (inclusive)
+function getAllDatesInRange(startDate: string, endDate: string): string[] {
+  const dates: string[] = [];
+  const current = new Date(startDate);
+  const end = new Date(endDate);
+  
+  while (current <= end) {
+    dates.push(current.toISOString().split('T')[0]);
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return dates;
+}
+
+// Fill in missing dates with zero-hour entries
+function fillEmptyDays(
+  data: KPIDataPoint[],
+  startDate: string,
+  endDate: string
+): KPIDataPoint[] {
+  const allDates = getAllDatesInRange(startDate, endDate);
+  const dataByDate = new Map(data.map((d) => [d.date, d]));
+  
+  return allDates.map((date) => {
+    const existing = dataByDate.get(date);
+    if (existing) {
+      return existing;
+    }
+    // Create empty day entry
+    return {
+      date,
+      hours: 0,
+      badge: null,
+      days_in_period: 1,
+      is_complete: true,
+    };
+  });
 }
 
 interface ChartDataPoint extends KPIDataPoint {
@@ -95,9 +137,14 @@ function CustomTooltip({ active, payload, label, groupBy }: CustomTooltipProps) 
   return null;
 }
 
-export function KPIChart({ data, groupBy }: KPIChartProps) {
+export function KPIChart({ data, groupBy, startDate, endDate, showEmptyDays }: KPIChartProps) {
+  // Fill in empty days if enabled and viewing daily grouping
+  const processedData = groupBy === 'day' && showEmptyDays
+    ? fillEmptyDays(data, startDate, endDate)
+    : data;
+
   // Normalize data to daily average hours
-  const chartData: ChartDataPoint[] = data.map((d) => ({
+  const chartData: ChartDataPoint[] = processedData.map((d) => ({
     ...d,
     formattedDate: formatDate(d.date, groupBy),
     avgDailyHours: d.hours / Math.max(d.days_in_period, 1),
@@ -197,6 +244,11 @@ export function KPIChart({ data, groupBy }: KPIChartProps) {
                 const { cx, cy, payload } = props;
                 const badge = payload.badge as keyof typeof badgeColors | null;
                 const isPartial = !payload.is_complete;
+                
+                // Don't render dot for empty days (0 hours)
+                if (payload.hours === 0) {
+                  return null;
+                }
                 
                 return (
                   <circle

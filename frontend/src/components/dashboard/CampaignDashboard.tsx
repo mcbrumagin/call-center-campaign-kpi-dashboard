@@ -45,6 +45,7 @@ export function CampaignDashboard({ campaignId }: CampaignDashboardProps) {
   const rangePreset = (searchParams.get('range') as RangePreset) || '30';
   const customStart = searchParams.get('start');
   const customEnd = searchParams.get('end');
+  const showEmptyDays = searchParams.get('showEmpty') !== 'false'; // Default to true
 
   // Calculate date range
   const { start, end } = useMemo(() => {
@@ -86,6 +87,10 @@ export function CampaignDashboard({ campaignId }: CampaignDashboardProps) {
 
   const setCustomDateRange = useCallback((newStart: string, newEnd: string) => {
     updateParams({ range: 'custom', start: newStart, end: newEnd });
+  }, [updateParams]);
+
+  const setShowEmptyDays = useCallback((value: boolean) => {
+    updateParams({ showEmpty: value ? null : 'false' }); // Only store in URL when false (non-default)
   }, [updateParams]);
 
   const { data: campaign, isLoading: campaignLoading } = useQuery({
@@ -195,7 +200,7 @@ export function CampaignDashboard({ campaignId }: CampaignDashboardProps) {
                 />
               )}
             </div>
-            <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="lg:col-span-2 grid grid-cols-2 gap-4">
               <StatCard
                 icon={Clock}
                 label="Today's Hours"
@@ -206,21 +211,21 @@ export function CampaignDashboard({ campaignId }: CampaignDashboardProps) {
               <StatCard
                 icon={TrendingUp}
                 label="Avg Daily Hours"
-                value={kpiData?.summary.average_daily_hours.toFixed(1) || '0'}
+                value={badgeSummary?.average_daily_hours.toFixed(1) || '0'}
                 suffix="hrs"
                 color="green"
               />
               <StatCard
                 icon={BarChart3}
                 label="Total Hours"
-                value={kpiData?.summary.total_hours.toFixed(0) || '0'}
+                value={badgeSummary?.total_hours.toFixed(0) || '0'}
                 suffix="hrs"
                 color="purple"
               />
               <StatCard
                 icon={Calendar}
                 label="Days Tracked"
-                value={kpiData?.summary.days_with_data.toString() || '0'}
+                value={badgeSummary?.total_days.toString() || '0'}
                 suffix="days"
                 color="orange"
               />
@@ -287,6 +292,17 @@ export function CampaignDashboard({ campaignId }: CampaignDashboardProps) {
                 ))}
               </div>
             </div>
+            {groupBy === 'day' && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showEmptyDays}
+                  onChange={(e) => setShowEmptyDays(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-600">Show empty days</span>
+              </label>
+            )}
           </div>
         </div>
 
@@ -299,7 +315,13 @@ export function CampaignDashboard({ campaignId }: CampaignDashboardProps) {
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
               </div>
             ) : kpiData ? (
-              <KPIChart data={kpiData.data} groupBy={groupBy} />
+              <KPIChart
+                data={kpiData.data}
+                groupBy={groupBy}
+                startDate={start}
+                endDate={end}
+                showEmptyDays={showEmptyDays}
+              />
             ) : (
               <div className="flex items-center justify-center h-96 bg-white rounded-xl shadow-sm border border-gray-100 text-gray-500">
                 No KPI data available for this period

@@ -179,6 +179,9 @@ export function CampaignsList({ token }: CampaignsListProps) {
                 Agents
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Created
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -189,13 +192,13 @@ export function CampaignsList({ token }: CampaignsListProps) {
           <tbody className="divide-y divide-gray-100">
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                   Loading...
                 </td>
               </tr>
             ) : data?.data.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                   No campaigns found
                 </td>
               </tr>
@@ -229,6 +232,13 @@ export function CampaignsList({ token }: CampaignsListProps) {
                         <UserPlus className="w-4 h-4" />
                       </button>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {new Date(campaign.created_at).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
                   </td>
                   <td className="px-6 py-4">
                     <span
