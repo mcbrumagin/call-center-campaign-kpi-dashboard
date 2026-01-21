@@ -11,6 +11,8 @@ async def get_db():
     """Async context manager for database connections."""
     db = await aiosqlite.connect(DATABASE_PATH)
     db.row_factory = aiosqlite.Row
+    # Enable foreign key support for cascading deletes
+    await db.execute("PRAGMA foreign_keys = ON")
     try:
         yield db
     finally:

@@ -60,7 +60,7 @@ function getBadgeConfig(badgeKey: string | null) {
 }
 
 export function BadgeSummary({ breakdown, totalDays, averageBadge, averageDailyHours }: BadgeSummaryProps) {
-  const avgBadgeConfig = getBadgeConfig(averageBadge);
+  const avgBadgeConfig = getBadgeConfig(averageBadge || 'none');
   const AvgIcon = avgBadgeConfig.icon;
 
   return (

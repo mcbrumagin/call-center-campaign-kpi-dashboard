@@ -29,7 +29,7 @@ async function fetchApi<T>(endpoint: string, options: FetchOptions = {}): Promis
   };
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
   }
 
   console.log('API_BASE_URL', API_BASE_URL);

@@ -18,6 +18,7 @@ import {
   ChevronRight,
   X,
   UserPlus,
+  UserMinus,
 } from 'lucide-react';
 
 interface AgentsListProps {
@@ -31,6 +32,9 @@ export function AgentsList({ token }: AgentsListProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [assignModalAgent, setAssignModalAgent] = useState<Agent | null>(null);
+  const [removeModalAgent, setRemoveModalAgent] = useState<Agent | null>(null);
+  const [campaignsToRemove, setCampaignsToRemove] = useState<Set<number>>(new Set());
+  const [deleteConfirmAgent, setDeleteConfirmAgent] = useState<Agent | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['agents', page, search],
@@ -56,6 +60,7 @@ export function AgentsList({ token }: AgentsListProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
       setEditingAgent(null);
+      setIsModalOpen(false);
     },
   });
 
@@ -63,6 +68,7 @@ export function AgentsList({ token }: AgentsListProps) {
     mutationFn: (id: number) => agentsApi.delete(token, id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
+      setDeleteConfirmAgent(null);
     },
   });
 
@@ -72,14 +78,21 @@ export function AgentsList({ token }: AgentsListProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
       setAssignModalAgent(null);
+      setIsModalOpen(false);
     },
   });
 
-  const removeCampaignMutation = useMutation({
-    mutationFn: ({ agentId, campaignId }: { agentId: number; campaignId: number }) =>
-      agentsApi.removeCampaign(token, agentId, campaignId),
+  const removeCampaignsMutation = useMutation({
+    mutationFn: async ({ agentId, campaignIds }: { agentId: number; campaignIds: number[] }) => {
+      // Remove campaigns sequentially
+      for (const campaignId of campaignIds) {
+        await agentsApi.removeCampaign(token, agentId, campaignId);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] });
+      setRemoveModalAgent(null);
+      setCampaignsToRemove(new Set());
     },
   });
 
@@ -107,6 +120,31 @@ export function AgentsList({ token }: AgentsListProps) {
     const formData = new FormData(e.currentTarget);
     const campaignIds = formData.getAll('campaigns').map(Number);
     assignMutation.mutate({ agentId: assignModalAgent.id, campaignIds });
+  };
+
+  const handleRemoveCampaigns = () => {
+    if (!removeModalAgent || campaignsToRemove.size === 0) return;
+    removeCampaignsMutation.mutate({
+      agentId: removeModalAgent.id,
+      campaignIds: Array.from(campaignsToRemove),
+    });
+  };
+
+  const toggleCampaignToRemove = (campaignId: number) => {
+    setCampaignsToRemove((prev) => {
+      const next = new Set(prev);
+      if (next.has(campaignId)) {
+        next.delete(campaignId);
+      } else {
+        next.add(campaignId);
+      }
+      return next;
+    });
+  };
+
+  const openRemoveModal = (agent: Agent) => {
+    setRemoveModalAgent(agent);
+    setCampaignsToRemove(new Set());
   };
 
   return (
@@ -195,24 +233,13 @@ export function AgentsList({ token }: AgentsListProps) {
                   </td>
                   <td className="px-6 py-4 text-gray-500">{agent.email}</td>
                   <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1 items-center">
                       {agent.campaigns.slice(0, 2).map((campaign) => (
                         <span
                           key={campaign.id}
-                          className="inline-flex items-center gap-1 px-4 py-2 bg-purple-100 text-purple-700 text-xs rounded-full"
+                          className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-700 text-xs rounded-full"
                         >
                           {campaign.name}
-                          <button
-                            onClick={() =>
-                              removeCampaignMutation.mutate({
-                                agentId: agent.id,
-                                campaignId: campaign.id,
-                              })
-                            }
-                            className="hover:text-purple-900"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
                         </span>
                       ))}
                       {agent.campaigns.length > 2 && (
@@ -220,12 +247,24 @@ export function AgentsList({ token }: AgentsListProps) {
                           +{agent.campaigns.length - 2}
                         </span>
                       )}
-                      <button
-                        onClick={() => setAssignModalAgent(agent)}
-                        className="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs rounded-full transition-colors"
-                      >
-                        <UserPlus className="w-3 h-3" />
-                      </button>
+                      <div className="flex gap-1 ml-1">
+                        <button
+                          onClick={() => setAssignModalAgent(agent)}
+                          className="p-1.5 bg-green-100 hover:bg-green-200 text-green-600 text-xs rounded-full transition-colors"
+                          title="Assign campaigns"
+                        >
+                          <UserPlus className="w-3 h-3" />
+                        </button>
+                        {agent.campaigns.length > 0 && (
+                          <button
+                            onClick={() => openRemoveModal(agent)}
+                            className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 text-xs rounded-full transition-colors"
+                            title="Remove campaigns"
+                          >
+                            <UserMinus className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -251,11 +290,7 @@ export function AgentsList({ token }: AgentsListProps) {
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm('Are you sure you want to delete this agent?')) {
-                            deleteMutation.mutate(agent.id);
-                          }
-                        }}
+                        onClick={() => setDeleteConfirmAgent(agent)}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -444,6 +479,132 @@ export function AgentsList({ token }: AgentsListProps) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Remove Campaigns Modal */}
+      {removeModalAgent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => {
+              setRemoveModalAgent(null);
+              setCampaignsToRemove(new Set());
+            }}
+          />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 m-4">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              Remove Campaigns
+            </h2>
+            <p className="text-gray-500 mb-6">
+              Select campaigns to remove from {removeModalAgent.first_name}{' '}
+              {removeModalAgent.last_name}
+            </p>
+            <div className="space-y-4">
+              <div className="max-h-64 overflow-y-auto space-y-2">
+                {removeModalAgent.campaigns.map((campaign) => {
+                  const isMarkedForRemoval = campaignsToRemove.has(campaign.id);
+                  return (
+                    <div
+                      key={campaign.id}
+                      className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${
+                        isMarkedForRemoval
+                          ? 'border-red-300 bg-red-50'
+                          : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex-1">
+                        <p
+                          className={`font-medium ${
+                            isMarkedForRemoval
+                              ? 'text-red-400 line-through'
+                              : 'text-gray-900'
+                          }`}
+                        >
+                          {campaign.name}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleCampaignToRemove(campaign.id)}
+                        className={`p-1.5 rounded-full transition-colors ${
+                          isMarkedForRemoval
+                            ? 'bg-red-200 text-red-700 hover:bg-red-300'
+                            : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        }`}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              {campaignsToRemove.size > 0 && (
+                <p className="text-sm text-red-600">
+                  {campaignsToRemove.size} campaign{campaignsToRemove.size !== 1 ? 's' : ''} will be removed
+                </p>
+              )}
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRemoveModalAgent(null);
+                    setCampaignsToRemove(new Set());
+                  }}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRemoveCampaigns}
+                  disabled={campaignsToRemove.size === 0 || removeCampaignsMutation.isPending}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {removeCampaignsMutation.isPending ? 'Removing...' : 'Apply'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmAgent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setDeleteConfirmAgent(null)}
+          />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-sm p-6 m-4">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              Delete Agent
+            </h2>
+            <p className="text-gray-500 mb-6">
+              Are you sure you want to delete{' '}
+              <span className="font-medium text-gray-900">
+                {deleteConfirmAgent.first_name} {deleteConfirmAgent.last_name}
+              </span>
+              ? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmAgent(null)}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteMutation.mutate(deleteConfirmAgent.id)}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}

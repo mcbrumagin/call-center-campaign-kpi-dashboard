@@ -35,6 +35,9 @@ export function CampaignsList({ token }: CampaignsListProps) {
   const [assignModalCampaign, setAssignModalCampaign] = useState<Campaign | null>(
     null
   );
+  const [deleteConfirmCampaign, setDeleteConfirmCampaign] = useState<Campaign | null>(
+    null
+  );
 
   const { data, isLoading } = useQuery({
     queryKey: ['campaigns', page, search],
@@ -76,6 +79,7 @@ export function CampaignsList({ token }: CampaignsListProps) {
     mutationFn: (id: number) => campaignsApi.delete(token, id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+      setDeleteConfirmCampaign(null);
     },
   });
 
@@ -271,13 +275,7 @@ export function CampaignsList({ token }: CampaignsListProps) {
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (
-                            confirm('Are you sure you want to delete this campaign?')
-                          ) {
-                            deleteMutation.mutate(campaign.id);
-                          }
-                        }}
+                        onClick={() => setDeleteConfirmCampaign(campaign)}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -394,41 +392,11 @@ export function CampaignsList({ token }: CampaignsListProps) {
           />
           <div className="relative bg-white rounded-xl shadow-xl w-full max-h-3/4 max-w-xl p-6 m-4">
             <h2 className="text-xl font-bold text-gray-900 mb-2">
-              Manage Agents
+              Add Agents
             </h2>
             <p className="text-gray-500 mb-4">
               Campaign: {assignModalCampaign.name}
             </p>
-
-            {/* Current Agents */}
-            {campaignDetail && campaignDetail.agents.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">
-                  Current Agents
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {campaignDetail.agents.map((agent) => (
-                    <span
-                      key={agent.id}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full"
-                    >
-                      {agent.first_name} {agent.last_name}
-                      <button
-                        onClick={() =>
-                          removeAgentMutation.mutate({
-                            campaignId: assignModalCampaign.id,
-                            agentId: agent.id,
-                          })
-                        }
-                        className="hover:text-blue-900"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Add Agents Form */}
             <form onSubmit={handleAssign} className="space-y-4">
@@ -487,6 +455,45 @@ export function CampaignsList({ token }: CampaignsListProps) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmCampaign && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setDeleteConfirmCampaign(null)}
+          />
+          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-sm p-6 m-4">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              Delete Campaign
+            </h2>
+            <p className="text-gray-500 mb-6">
+              Are you sure you want to delete{' '}
+              <span className="font-medium text-gray-900">
+                {deleteConfirmCampaign.name}
+              </span>
+              ? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmCampaign(null)}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => deleteMutation.mutate(deleteConfirmCampaign.id)}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}
