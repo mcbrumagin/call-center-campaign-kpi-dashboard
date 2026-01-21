@@ -3,7 +3,7 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, status, Query
 
-from app.services import get_campaign_kpis, get_daily_badge, get_badge_summary, BADGE_THRESHOLDS
+from app.services import get_campaign_kpis, get_daily_badge, get_badge_summary
 from app.models import KPIResponse, DailyBadgeResponse, BadgeSummaryResponse
 
 router = APIRouter(prefix="/api/kpis", tags=["kpis"])
@@ -109,14 +109,3 @@ async def get_campaign_badge_summary(
     return result
 
 
-@router.get("/badge-thresholds")
-async def get_badge_thresholds():
-    """
-    Get badge threshold information.
-    
-    Returns the hours required for each badge tier.
-    """
-    return {
-        "thresholds": BADGE_THRESHOLDS,
-        "description": "Hours required per day to earn each badge",
-    }

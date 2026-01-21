@@ -1,8 +1,8 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Medal, Award, Star, Target } from 'lucide-react';
 import { BadgeType } from '@/lib/api';
+import { badgeConfig, getBadgeConfig, NoBadgeIcon } from '@/lib/badge-config';
 
 interface BadgeDisplayProps {
   badge: BadgeType;
@@ -12,49 +12,6 @@ interface BadgeDisplayProps {
   threshold?: number;
 }
 
-const badgeConfig = {
-  platinum: {
-    icon: Trophy,
-    gradient: 'from-slate-200 via-slate-300 to-slate-400',
-    textColor: 'text-slate-800',
-    borderColor: 'border-slate-300',
-    glowColor: 'shadow-slate-300/50',
-    bgColor: 'bg-slate-100',
-    label: 'PLATINUM',
-    description: 'Outstanding Performance!',
-  },
-  gold: {
-    icon: Medal,
-    gradient: 'from-yellow-300 via-yellow-400 to-yellow-500',
-    textColor: 'text-yellow-900',
-    borderColor: 'border-yellow-400',
-    glowColor: 'shadow-yellow-400/50',
-    bgColor: 'bg-yellow-50',
-    label: 'GOLD',
-    description: 'Excellent Work!',
-  },
-  silver: {
-    icon: Award,
-    gradient: 'from-gray-300 via-gray-350 to-gray-400',
-    textColor: 'text-gray-800',
-    borderColor: 'border-gray-400',
-    glowColor: 'shadow-gray-400/50',
-    bgColor: 'bg-gray-50',
-    label: 'SILVER',
-    description: 'Great Progress!',
-  },
-  bronze: {
-    icon: Star,
-    gradient: 'from-orange-300 via-orange-400 to-orange-500',
-    textColor: 'text-orange-900',
-    borderColor: 'border-orange-400',
-    glowColor: 'shadow-orange-400/50',
-    bgColor: 'bg-orange-50',
-    label: 'BRONZE',
-    description: 'Good Start!',
-  },
-};
-
 export function BadgeDisplay({
   badge,
   hours,
@@ -63,6 +20,8 @@ export function BadgeDisplay({
   threshold,
 }: BadgeDisplayProps) {
   if (!badge) {
+    const nextBadgeConfig = nextBadge ? getBadgeConfig(nextBadge) : null;
+    
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -80,11 +39,11 @@ export function BadgeDisplay({
           }}
           className="text-6xl mb-4"
         >
-          <Target className="w-16 h-16 text-gray-400" />
+          <NoBadgeIcon className="w-16 h-16 text-gray-400" />
         </motion.div>
         <h3 className="text-xl font-semibold text-gray-600">Keep Going!</h3>
         <p className="text-gray-500 mt-2">{hours.toFixed(1)} hours worked</p>
-        {hoursToNext !== undefined && nextBadge && (
+        {hoursToNext !== undefined && nextBadge && nextBadgeConfig && (
           <div className="mt-4 w-full max-w-xs">
             <div className="flex justify-between text-sm text-gray-500 mb-1">
               <span>Progress to {nextBadge}</span>
@@ -92,9 +51,7 @@ export function BadgeDisplay({
             </div>
             <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
               <motion.div
-                className={`h-full bg-gradient-to-r ${
-                  badgeConfig[nextBadge]?.gradient || 'from-gray-400 to-gray-500'
-                }`}
+                className={`h-full bg-gradient-to-r ${nextBadgeConfig.gradient}`}
                 initial={{ width: 0 }}
                 animate={{
                   width: `${Math.min(
@@ -111,7 +68,7 @@ export function BadgeDisplay({
     );
   }
 
-  const config = badgeConfig[badge];
+  const config = getBadgeConfig(badge);
   const Icon = config.icon;
 
   return (
@@ -122,7 +79,7 @@ export function BadgeDisplay({
         animate={{ scale: 1, rotate: 0, opacity: 1 }}
         exit={{ scale: 0, rotate: 180, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-        className={`flex flex-col items-center p-8 ${config.bgColor} rounded-2xl border-2 ${config.borderColor}`}
+        className={`flex flex-col items-center p-8 ${config.bgColorLight} rounded-2xl border-2 ${config.borderColor}`}
       >
         <motion.div
           animate={
@@ -181,7 +138,7 @@ export function BadgeDisplay({
           transition={{ delay: 0.3 }}
           className={`mt-6 text-3xl font-bold ${config.textColor}`}
         >
-          {config.label}
+          {config.label.toUpperCase()}
         </motion.h2>
 
         <motion.p
@@ -222,9 +179,7 @@ export function BadgeDisplay({
             </div>
             <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
               <motion.div
-                className={`h-full bg-gradient-to-r ${
-                  badgeConfig[nextBadge]?.gradient || 'from-gray-400 to-gray-500'
-                }`}
+                className={`h-full bg-gradient-to-r ${getBadgeConfig(nextBadge).gradient}`}
                 initial={{ width: 0 }}
                 animate={{
                   width: `${Math.min(

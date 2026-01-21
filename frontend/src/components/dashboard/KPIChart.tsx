@@ -11,6 +11,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { KPIDataPoint } from '@/lib/api';
+import { BADGE_THRESHOLDS, badgeColors, BadgeKey } from '@/lib/badge-config';
 
 interface KPIChartProps {
   data: KPIDataPoint[];
@@ -19,22 +20,6 @@ interface KPIChartProps {
   endDate: string;
   showEmptyDays: boolean;
 }
-
-// Badge thresholds are always daily values
-const BADGE_THRESHOLDS = {
-  platinum: 240,
-  gold: 180,
-  silver: 120,
-  bronze: 60,
-};
-
-const badgeColors = {
-  platinum: 'var(--color-slate-100)',
-  gold: 'var(--color-yellow-400)',
-  silver: 'var(--color-gray-300)',
-  bronze: 'var(--color-orange-400)',
-  none: 'var(--color-blue-100)',
-};
 
 function formatDate(dateStr: string, groupBy: string): string {
   const date = new Date(dateStr);
@@ -242,7 +227,7 @@ export function KPIChart({ data, groupBy, startDate, endDate, showEmptyDays }: K
               fill="url(#colorHours)"
               dot={(props) => {
                 const { cx, cy, payload } = props;
-                const badge = payload.badge as keyof typeof badgeColors | null;
+                const badge: BadgeKey = payload.badge || 'none';
                 const isPartial = !payload.is_complete;
                 
                 // Don't render dot for empty days (0 hours)
@@ -256,7 +241,7 @@ export function KPIChart({ data, groupBy, startDate, endDate, showEmptyDays }: K
                     cx={cx}
                     cy={cy}
                     r={6}
-                    fill={badgeColors[badge || 'none']}
+                    fill={badgeColors[badge]}
                     stroke={isPartial ? 'var(--color-amber-500)' : 'var(--color-gray-400)'}
                     strokeWidth={isPartial ? 2 : 1}
                     strokeDasharray={isPartial ? '2 2' : undefined}

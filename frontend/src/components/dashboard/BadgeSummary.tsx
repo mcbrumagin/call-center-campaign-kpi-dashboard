@@ -1,8 +1,9 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Trophy, Medal, Award, Star, Circle, TrendingUp } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import type { BadgeType } from '@/lib/api';
+import { badgeConfig, badgeOrder, getBadgeConfig } from '@/lib/badge-config';
 
 interface BadgeSummaryProps {
   breakdown: {
@@ -17,51 +18,9 @@ interface BadgeSummaryProps {
   averageDailyHours?: number;
 }
 
-const badges = [
-  {
-    key: 'platinum',
-    label: 'Platinum',
-    icon: Trophy,
-    color: 'bg-slate-100',
-    textColor: 'text-slate-600',
-  },
-  {
-    key: 'gold',
-    label: 'Gold',
-    icon: Medal,
-    color: 'bg-yellow-400',
-    textColor: 'text-yellow-800',
-  },
-  {
-    key: 'silver',
-    label: 'Silver',
-    icon: Award,
-    color: 'bg-gray-300',
-    textColor: 'text-gray-700',
-  },
-  {
-    key: 'bronze',
-    label: 'Bronze',
-    icon: Star,
-    color: 'bg-orange-400',
-    textColor: 'text-orange-800',
-  },
-  {
-    key: 'none',
-    label: 'No Badge',
-    icon: Circle,
-    color: 'bg-blue-100',
-    textColor: 'text-gray-500',
-  },
-];
-
-function getBadgeConfig(badgeKey: string | null) {
-  return badges.find((b) => b.key === (badgeKey || 'none')) || badges[badges.length - 1];
-}
-
 export function BadgeSummary({ breakdown, totalDays, averageBadge, averageDailyHours }: BadgeSummaryProps) {
-  const avgBadgeConfig = getBadgeConfig(averageBadge || 'none');
-  const AvgIcon = avgBadgeConfig.icon;
+  const avgBadge = getBadgeConfig(averageBadge ?? null);
+  const AvgIcon = avgBadge.icon;
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -72,9 +31,9 @@ export function BadgeSummary({ breakdown, totalDays, averageBadge, averageDailyH
         <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
           <div className="flex items-center gap-3">
             <div
-              className={`w-12 h-12 ${avgBadgeConfig.color} rounded-lg flex items-center justify-center`}
+              className={`w-12 h-12 ${avgBadge.bgColor} rounded-lg flex items-center justify-center`}
             >
-              <AvgIcon className={`w-6 h-6 ${avgBadgeConfig.textColor}`} />
+              <AvgIcon className={`w-6 h-6 ${avgBadge.textColor}`} />
             </div>
             <div>
               <div className="flex items-center gap-1 text-sm text-gray-500">
@@ -82,7 +41,7 @@ export function BadgeSummary({ breakdown, totalDays, averageBadge, averageDailyH
                 <span>Average Rating</span>
               </div>
               <p className="text-lg font-semibold text-gray-900">
-                {avgBadgeConfig.label}
+                {avgBadge.label}
               </p>
               <p className="text-sm text-gray-500">
                 {averageDailyHours.toFixed(1)} hrs/day avg
@@ -94,21 +53,22 @@ export function BadgeSummary({ breakdown, totalDays, averageBadge, averageDailyH
 
       {/* Daily Badge Breakdown */}
       <div className="space-y-3">
-        {badges.map((badge, index) => {
-          const count = breakdown[badge.key as keyof typeof breakdown];
+        {badgeOrder.map((badgeKey, index) => {
+          const badge = badgeConfig[badgeKey];
+          const count = breakdown[badgeKey];
           const percentage = totalDays > 0 ? (count / totalDays) * 100 : 0;
           const Icon = badge.icon;
 
           return (
             <motion.div
-              key={badge.key}
+              key={badgeKey}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.1 }}
               className="flex items-center gap-3"
             >
               <div
-                className={`w-10 h-10 ${badge.color} rounded-lg flex items-center justify-center`}
+                className={`w-10 h-10 ${badge.bgColor} rounded-lg flex items-center justify-center`}
               >
                 <Icon className={`w-5 h-5 ${badge.textColor}`} />
               </div>
@@ -123,7 +83,7 @@ export function BadgeSummary({ breakdown, totalDays, averageBadge, averageDailyH
                 </div>
                 <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                   <motion.div
-                    className={badge.color}
+                    className={badge.bgColor}
                     initial={{ width: 0 }}
                     animate={{ width: `${percentage}%` }}
                     transition={{ duration: 0.5, delay: index * 0.1 + 0.2 }}

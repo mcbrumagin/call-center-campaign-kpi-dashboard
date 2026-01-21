@@ -20,6 +20,7 @@ import {
   UserPlus,
   UserMinus,
 } from 'lucide-react';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface AgentsListProps {
   token: string;
@@ -571,43 +572,14 @@ export function AgentsList({ token }: AgentsListProps) {
       )}
 
       {/* Delete Confirmation Modal */}
-      {deleteConfirmAgent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="fixed inset-0 bg-black/50"
-            onClick={() => setDeleteConfirmAgent(null)}
-          />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-sm p-6 m-4">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
-              Delete Agent
-            </h2>
-            <p className="text-gray-500 mb-6">
-              Are you sure you want to delete{' '}
-              <span className="font-medium text-gray-900">
-                {deleteConfirmAgent.first_name} {deleteConfirmAgent.last_name}
-              </span>
-              ? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirmAgent(null)}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => deleteMutation.mutate(deleteConfirmAgent.id)}
-                disabled={deleteMutation.isPending}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-              >
-                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDeleteModal
+        title="Delete Agent"
+        itemName={deleteConfirmAgent ? `${deleteConfirmAgent.first_name} ${deleteConfirmAgent.last_name}` : ''}
+        isOpen={!!deleteConfirmAgent}
+        isPending={deleteMutation.isPending}
+        onClose={() => setDeleteConfirmAgent(null)}
+        onConfirm={() => deleteConfirmAgent && deleteMutation.mutate(deleteConfirmAgent.id)}
+      />
     </div>
   );
 }

@@ -16,11 +16,11 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  X,
   UserPlus,
   ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface CampaignsListProps {
   token: string;
@@ -95,20 +95,6 @@ export function CampaignsList({ token }: CampaignsListProps) {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.invalidateQueries({ queryKey: ['campaign'] });
       setAssignModalCampaign(null);
-    },
-  });
-
-  const removeAgentMutation = useMutation({
-    mutationFn: ({
-      campaignId,
-      agentId,
-    }: {
-      campaignId: number;
-      agentId: number;
-    }) => campaignsApi.removeAgent(token, campaignId, agentId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
-      queryClient.invalidateQueries({ queryKey: ['campaign'] });
     },
   });
 
@@ -460,43 +446,14 @@ export function CampaignsList({ token }: CampaignsListProps) {
       )}
 
       {/* Delete Confirmation Modal */}
-      {deleteConfirmCampaign && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="fixed inset-0 bg-black/50"
-            onClick={() => setDeleteConfirmCampaign(null)}
-          />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-sm p-6 m-4">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
-              Delete Campaign
-            </h2>
-            <p className="text-gray-500 mb-6">
-              Are you sure you want to delete{' '}
-              <span className="font-medium text-gray-900">
-                {deleteConfirmCampaign.name}
-              </span>
-              ? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirmCampaign(null)}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => deleteMutation.mutate(deleteConfirmCampaign.id)}
-                disabled={deleteMutation.isPending}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-              >
-                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDeleteModal
+        title="Delete Campaign"
+        itemName={deleteConfirmCampaign?.name || ''}
+        isOpen={!!deleteConfirmCampaign}
+        isPending={deleteMutation.isPending}
+        onClose={() => setDeleteConfirmCampaign(null)}
+        onConfirm={() => deleteConfirmCampaign && deleteMutation.mutate(deleteConfirmCampaign.id)}
+      />
     </div>
   );
 }

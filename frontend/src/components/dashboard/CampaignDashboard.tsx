@@ -27,10 +27,6 @@ function getDateRange(days: number): { start: string; end: string } {
   };
 }
 
-function formatDateForInput(dateStr: string): string {
-  return dateStr; // Already in YYYY-MM-DD format
-}
-
 function isValidDate(dateStr: string): boolean {
   const date = new Date(dateStr);
   return !isNaN(date.getTime());
@@ -258,7 +254,7 @@ export function CampaignDashboard({ campaignId }: CampaignDashboardProps) {
               <div className="flex items-center gap-2">
                 <input
                   type="date"
-                  value={formatDateForInput(start)}
+                  value={start}
                   onChange={(e) => setCustomDateRange(e.target.value, end)}
                   max={end}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -266,7 +262,7 @@ export function CampaignDashboard({ campaignId }: CampaignDashboardProps) {
                 <span className="text-gray-400">to</span>
                 <input
                   type="date"
-                  value={formatDateForInput(end)}
+                  value={end}
                   onChange={(e) => setCustomDateRange(start, e.target.value)}
                   min={start}
                   max={new Date().toISOString().split('T')[0]}

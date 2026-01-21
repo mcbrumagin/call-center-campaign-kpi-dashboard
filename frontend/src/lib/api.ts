@@ -32,7 +32,6 @@ async function fetchApi<T>(endpoint: string, options: FetchOptions = {}): Promis
     (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
   }
 
-  console.log('API_BASE_URL', API_BASE_URL);
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...fetchOptions,
     headers,
@@ -244,12 +243,6 @@ export const campaignsApi = {
       body: JSON.stringify({ agent_ids: agentIds }),
       token,
     }),
-
-  removeAgent: (token: string, campaignId: number, agentId: number) =>
-    fetchApi<void>(`/api/campaigns/${campaignId}/agents/${agentId}`, {
-      method: 'DELETE',
-      token,
-    }),
 };
 
 // KPIs API
@@ -320,7 +313,6 @@ export const kpisApi = {
     if (date) searchParams.set('target_date', date);
     
     const query = searchParams.toString();
-    console.log('query', query);
     return fetchApi<DailyBadgeResponse>(`/api/kpis/campaigns/${campaignId}/badge${query ? `?${query}` : ''}`);
   },
 
@@ -335,9 +327,6 @@ export const kpisApi = {
     const query = searchParams.toString();
     return fetchApi<BadgeSummaryResponse>(`/api/kpis/campaigns/${campaignId}/badge-summary${query ? `?${query}` : ''}`);
   },
-
-  getBadgeThresholds: () =>
-    fetchApi<{ thresholds: Record<string, number>; description: string }>('/api/kpis/badge-thresholds'),
 };
 
 export { ApiError };
